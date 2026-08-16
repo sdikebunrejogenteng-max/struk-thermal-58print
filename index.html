@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<meta name="description" content="Aplikasi nota dan struk thermal 58 mm offline">
+<meta name="description" content="Aplikasi nota dan struk thermal 58 mm offline dengan Payment ID otomatis">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <title>Struk Thermal 58</title>
@@ -42,7 +42,7 @@ label{display:block;font-size:12px;font-weight:700}input,select{width:100%;paddi
 <div class="card"><h2>Transaksi Baru</h2><div class="grid">
 <div><label>Nama WR</label><input id="wr" value="ROMI"></div>
 <div><label>Tanggal & Waktu</label><input id="date" type="datetime-local"></div>
-<div><label>Payment ID</label><input id="pid" readonly></div>
+<div><label>Payment ID <span class="muted">(otomatis)</span></label><input id="pid" readonly></div>
 <div><label>Pembayaran</label><select id="pay"><option>Cash</option><option>Transfer</option><option>QRIS</option></select></div>
 <div class="full"><label>Jasa / Keterangan</label><input id="service" value="Jasa Listrik Muncar"></div>
 <div><label>Jumlah</label><input id="qty" type="number" step="0.1" value="54"></div>
@@ -85,7 +85,7 @@ const rp=n=>'Rp '+Number(n||0).toLocaleString('id-ID');
 const esc=s=>String(s??'').replace(/[&<>"]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x]));
 function pad(n){return String(n).padStart(2,'0')}
 function nowLocal(){let d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes())}
-function makeId(){let d=new Date();return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+Math.floor(100+Math.random()*900)}
+function makeId(){const d=new Date();const dateKey=d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());const counterKey='st58_payment_counter_'+dateKey;let n=parseInt(localStorage.getItem(counterKey)||'0',10)+1;localStorage.setItem(counterKey,String(n));return 'PAY-'+dateKey+'-'+String(n).padStart(3,'0')}
 function fmt(s){let d=new Date(s);return pad(d.getDate())+'-'+['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][d.getMonth()]+'-'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes())}
 function calc(){return (+qty.value||0)*(+rate.value||0)+(+fee.value||0)}
 function render(){let q=+qty.value||0,r=+rate.value||0,f=+fee.value||0,t=q*r+f;total.textContent=rp(t);
@@ -94,12 +94,12 @@ receipt.innerHTML='<div class="c b">'+esc(st.h1)+'</div><div class="c b">'+esc(s
 '<div class="line"><span>'+q.toLocaleString('id-ID')+' X @ '+r.toLocaleString('id-ID')+'</span><span>'+rp(q*r)+'</span></div>'+(f?'<div class="line"><span>Biaya Beban</span><span>'+rp(f)+'</span></div>':'')+
 '<div class="dash"></div><div class="line b"><span>TOTAL</span><span>'+rp(t)+'</span></div><div class="dash"></div><div class="c b">TERIMA KASIH</div>'}
 function persist(){localStorage.setItem(TX,JSON.stringify(tx))}
-function newTx(){wr.value='ROMI';date.value=nowLocal();pid.value=makeId();pay.value='Cash';service.value='Jasa Listrik Muncar';qty.value=54;rate.value=2000;fee.value=15000;render()}
-function saveTx(){tx.unshift({id:pid.value,wr:wr.value,date:date.value,pay:pay.value,service:service.value,qty:+qty.value||0,rate:+rate.value||0,fee:+fee.value||0,total:calc()});persist();toast('Transaksi tersimpan');tab('history')}
+function newTx(){wr.value='ROMI';date.value=nowLocal();pid.value=makeId();localStorage.setItem('st58_current_pid',pid.value);pay.value='Cash';service.value='Jasa Listrik Muncar';qty.value=54;rate.value=2000;fee.value=15000;render()}
+function saveTx(){if(!pid.value)newTx();tx.unshift({id:pid.value,wr:wr.value,date:date.value,pay:pay.value,service:service.value,qty:+qty.value||0,rate:+rate.value||0,fee:+fee.value||0,total:calc()});persist();localStorage.removeItem('st58_current_pid');toast('Transaksi tersimpan');tab('history')}
 function printReceipt(){render();window.print()}
 function tab(id){document.querySelectorAll('section').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');if(id==='history')renderHistory();if(id==='report')renderReport()}
 function renderHistory(){let q=(search.value||'').toLowerCase();hist.innerHTML=tx.filter(t=>(t.wr+' '+t.id+' '+t.date+' '+t.service).toLowerCase().includes(q)).map(t=>'<tr><td>'+fmt(t.date)+'</td><td>'+esc(t.id)+'</td><td>'+esc(t.wr)+'</td><td class="r">'+rp(t.total)+'</td><td><button onclick="reprint(\\''+t.id+'\\')">🖨️</button></td></tr>').join('')||'<tr><td colspan="5">Belum ada transaksi.</td></tr>'}
-function reprint(id){let t=tx.find(x=>x.id===id);if(!t)return;wr.value=t.wr;date.value=t.date;pid.value=t.id;pay.value=t.pay;service.value=t.service;qty.value=t.qty;rate.value=t.rate;fee.value=t.fee;tab('new');render()}
+function reprint(id){let t=tx.find(x=>x.id===id);if(!t)return;wr.value=t.wr;date.value=t.date;pid.value=t.id;pay.value=t.pay;service.value=t.service;qty.value=t.qty;rate.value=t.rate;fee.value=t.fee;localStorage.setItem('st58_current_pid',pid.value);tab('new');render()}
 function renderReport(){let d=rday.value,m=rmonth.value,a=tx;if(d)a=a.filter(t=>t.date.slice(0,10)===d);if(m)a=a.filter(t=>t.date.slice(0,7)===m);rep.innerHTML='<h3>'+a.length+' transaksi</h3><div class="total">'+rp(a.reduce((s,t)=>s+t.total,0))+'</div>'}
 function exportCSV(){let rows=[['Tanggal','Payment ID','Nama WR','Pembayaran','Jasa','Jumlah','Tarif','Biaya','Total'],...tx.map(t=>[t.date,t.id,t.wr,t.pay,t.service,t.qty,t.rate,t.fee,t.total])];let csv=rows.map(r=>r.map(x=>'\"'+String(x).replaceAll('\"','\"\"')+'\"').join(',')).join('\\n');download(csv,'transaksi-struk58.csv','text/csv')}
 function backup(){download(JSON.stringify({tx,st},null,2),'backup-struk58.json','application/json')}
@@ -111,7 +111,7 @@ function toast(s){toastEl.textContent=s;toastEl.style.display='block';setTimeout
 const toastEl=document.getElementById('toast');
 async function installPWA(){if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}else toast('Gunakan menu browser: Tambahkan ke Layar Utama')}
 document.addEventListener('input',e=>{if(['wr','date','pid','pay','service','qty','rate','fee'].includes(e.target.id))render()});
-date.value=nowLocal();pid.value=makeId();loadSettings();
+date.value=nowLocal();pid.value=localStorage.getItem('st58_current_pid')||'';if(!pid.value){pid.value=makeId();localStorage.setItem('st58_current_pid',pid.value)}loadSettings();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
 </script>
 </body></html>

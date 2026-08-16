@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="description" content="Aplikasi nota dan struk thermal 58 mm offline">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<title>Struk Thermal 58</title>
+<style>
+:root{--p:#111827;--bg:#f3f4f6;--card:#fff;--line:#d1d5db;--muted:#6b7280}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:#111827}
+.app{max-width:900px;margin:auto;padding:12px 12px 80px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+h1{font-size:21px;margin:5px 0}.muted{font-size:12px;color:var(--muted)}
+.badge{background:#dcfce7;color:#166534;border-radius:999px;padding:6px 9px;font-size:12px;font-weight:700}
+nav{display:flex;gap:6px;overflow:auto;padding:10px 0;position:sticky;top:0;background:var(--bg);z-index:2}
+button,.btn{border:0;border-radius:9px;padding:10px 12px;background:var(--p);color:white;font-weight:700;cursor:pointer}
+button.gray,.btn.gray{background:#e5e7eb;color:#111827}button.red{background:#dc2626}
+.card{background:var(--card);padding:14px;margin:10px 0;border-radius:13px;box-shadow:0 2px 10px #0000000b}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:12px;font-weight:700}input,select{width:100%;padding:10px;margin-top:5px;border:1px solid var(--line);border-radius:8px;font-size:15px}
+.full{grid-column:1/-1}.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.total{text-align:right;font-size:23px;font-weight:800}
+.preview{background:#ddd;padding:18px;display:flex;justify-content:center;border-radius:9px}
+.receipt{width:58mm;background:#fff;color:#000;padding:3mm;font:12px/1.25 "Courier New",monospace}
+.c{text-align:center}.b{font-weight:800}.dash{border-top:1px dashed #000;margin:7px 0}.line{display:flex;justify-content:space-between;gap:7px}.line span:last-child{text-align:right}
+.hidden{display:none!important}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #e5e7eb;font-size:12px;text-align:left}td.r{text-align:right}
+.table{overflow:auto}.toast{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:9px;display:none;z-index:10}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.app{padding-left:9px;padding-right:9px}}
+@media print{body{background:#fff}.app>*:not(#new){display:none!important}.card{box-shadow:none;padding:0}.preview{padding:0;background:#fff}.receipt{width:58mm}@page{size:58mm auto;margin:0}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="top"><div><h1>🧾 Struk Thermal 58</h1><div class="muted">PWA • Offline • 58 mm</div></div><span class="badge">● OFFLINE READY</span></div>
+<nav>
+<button onclick="tab('new')">🧾 Baru</button><button class="gray" onclick="tab('history')">💾 Riwayat</button>
+<button class="gray" onclick="tab('report')">📊 Laporan</button><button class="gray" onclick="tab('settings')">⚙️ Pengaturan</button>
+</nav>
+
+<section id="new">
+<div class="card"><h2>Transaksi Baru</h2><div class="grid">
+<div><label>Nama WR</label><input id="wr" value="ROMI"></div>
+<div><label>Tanggal & Waktu</label><input id="date" type="datetime-local"></div>
+<div><label>Payment ID</label><input id="pid" readonly></div>
+<div><label>Pembayaran</label><select id="pay"><option>Cash</option><option>Transfer</option><option>QRIS</option></select></div>
+<div class="full"><label>Jasa / Keterangan</label><input id="service" value="Jasa Listrik Muncar"></div>
+<div><label>Jumlah</label><input id="qty" type="number" step="0.1" value="54"></div>
+<div><label>Tarif / Unit (Rp)</label><input id="rate" type="number" value="2000"></div>
+<div><label>Biaya Beban / Admin</label><input id="fee" type="number" value="15000"></div>
+<div><label>Total</label><div class="total" id="total"></div></div>
+</div>
+<div class="actions"><button onclick="saveTx()">💾 Simpan</button><button onclick="printReceipt()">🖨️ Cetak</button><button class="gray" onclick="newTx()">🔄 Baru</button></div>
+</div>
+<div class="card"><h2>Preview</h2><div class="preview"><div class="receipt" id="receipt"></div></div></div>
+</section>
+
+<section id="history" class="hidden"><div class="card"><h2>💾 Riwayat Transaksi</h2>
+<input id="search" placeholder="🔍 Cari nama, ID, jasa..." oninput="renderHistory()">
+<div class="actions"><button class="gray" onclick="exportCSV()">📤 Export Excel/CSV</button><button class="gray" onclick="backup()">📥 Backup JSON</button></div>
+<div class="table"><table><thead><tr><th>Tanggal</th><th>ID</th><th>WR</th><th>Total</th><th>Aksi</th></tr></thead><tbody id="hist"></tbody></table></div></div></section>
+
+<section id="report" class="hidden"><div class="card"><h2>📊 Laporan</h2><div class="grid">
+<div><label>Laporan Harian</label><input id="rday" type="date" onchange="renderReport()"></div>
+<div><label>Laporan Bulanan</label><input id="rmonth" type="month" onchange="renderReport()"></div>
+</div><div id="rep" style="margin-top:14px"></div></div></section>
+
+<section id="settings" class="hidden"><div class="card"><h2>⚙️ Pengaturan Header</h2><div class="grid">
+<div class="full"><label>Baris 1</label><input id="h1"></div><div class="full"><label>Baris 2</label><input id="h2"></div>
+<div class="full"><label>Baris 3</label><input id="h3"></div><div class="full"><label>Baris 4</label><input id="h4"></div>
+<div class="full"><label>Subjudul</label><input id="sub"></div></div>
+<div class="actions"><button onclick="saveSettings()">💾 Simpan Header</button><button class="gray" onclick="backup()">📥 Backup Data</button>
+<label class="btn gray">📂 Restore <input id="restore" type="file" accept=".json" hidden onchange="restore(event)"></label></div></div>
+<div class="card"><h2>📱 Instalasi</h2><p class="muted">Jika browser mendukung pemasangan PWA, tombol instal akan muncul di menu browser. Setelah terpasang, aplikasi dapat dibuka tanpa internet.</p><button onclick="installPWA()">➕ Pasang Aplikasi</button></div>
+</section>
+</div><div id="toast" class="toast"></div>
+
+<script>
+const TX='st58_tx_v2', ST='st58_settings_v2';
+let tx=JSON.parse(localStorage.getItem(TX)||'[]');
+let st=JSON.parse(localStorage.getItem(ST)||'null')||{h1:'PROVINSI JAWA TIMUR',h2:'DINAS KELAUTAN DAN PERIKANAN',h3:'UPT PELABUHAN PERIKANAN',h4:'PANTAI MUNCAR',sub:'TANDA BUKTI PENERIMAAN (PERDA No. 8 Tahun 2023)'};
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e});
+const rp=n=>'Rp '+Number(n||0).toLocaleString('id-ID');
+const esc=s=>String(s??'').replace(/[&<>"]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x]));
+function pad(n){return String(n).padStart(2,'0')}
+function nowLocal(){let d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes())}
+function makeId(){let d=new Date();return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+Math.floor(100+Math.random()*900)}
+function fmt(s){let d=new Date(s);return pad(d.getDate())+'-'+['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][d.getMonth()]+'-'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes())}
+function calc(){return (+qty.value||0)*(+rate.value||0)+(+fee.value||0)}
+function render(){let q=+qty.value||0,r=+rate.value||0,f=+fee.value||0,t=q*r+f;total.textContent=rp(t);
+receipt.innerHTML='<div class="c b">'+esc(st.h1)+'</div><div class="c b">'+esc(st.h2)+'</div><div class="c b">'+esc(st.h3)+'</div><div class="c b">'+esc(st.h4)+'</div><div class="dash"></div><div class="c b">'+esc(st.sub)+'</div><div class="dash"></div>'+
+'Nama WR : '+esc(wr.value)+'<br>Tanggal : '+esc(fmt(date.value))+'<br>Payment ID: '+esc(pid.value)+'<br>Pembayaran: '+esc(pay.value)+'<div class="dash"></div><div class="b">'+esc(service.value)+'</div>'+
+'<div class="line"><span>'+q.toLocaleString('id-ID')+' X @ '+r.toLocaleString('id-ID')+'</span><span>'+rp(q*r)+'</span></div>'+(f?'<div class="line"><span>Biaya Beban</span><span>'+rp(f)+'</span></div>':'')+
+'<div class="dash"></div><div class="line b"><span>TOTAL</span><span>'+rp(t)+'</span></div><div class="dash"></div><div class="c b">TERIMA KASIH</div>'}
+function persist(){localStorage.setItem(TX,JSON.stringify(tx))}
+function newTx(){wr.value='ROMI';date.value=nowLocal();pid.value=makeId();pay.value='Cash';service.value='Jasa Listrik Muncar';qty.value=54;rate.value=2000;fee.value=15000;render()}
+function saveTx(){tx.unshift({id:pid.value,wr:wr.value,date:date.value,pay:pay.value,service:service.value,qty:+qty.value||0,rate:+rate.value||0,fee:+fee.value||0,total:calc()});persist();toast('Transaksi tersimpan');tab('history')}
+function printReceipt(){render();window.print()}
+function tab(id){document.querySelectorAll('section').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');if(id==='history')renderHistory();if(id==='report')renderReport()}
+function renderHistory(){let q=(search.value||'').toLowerCase();hist.innerHTML=tx.filter(t=>(t.wr+' '+t.id+' '+t.date+' '+t.service).toLowerCase().includes(q)).map(t=>'<tr><td>'+fmt(t.date)+'</td><td>'+esc(t.id)+'</td><td>'+esc(t.wr)+'</td><td class="r">'+rp(t.total)+'</td><td><button onclick="reprint(\\''+t.id+'\\')">🖨️</button></td></tr>').join('')||'<tr><td colspan="5">Belum ada transaksi.</td></tr>'}
+function reprint(id){let t=tx.find(x=>x.id===id);if(!t)return;wr.value=t.wr;date.value=t.date;pid.value=t.id;pay.value=t.pay;service.value=t.service;qty.value=t.qty;rate.value=t.rate;fee.value=t.fee;tab('new');render()}
+function renderReport(){let d=rday.value,m=rmonth.value,a=tx;if(d)a=a.filter(t=>t.date.slice(0,10)===d);if(m)a=a.filter(t=>t.date.slice(0,7)===m);rep.innerHTML='<h3>'+a.length+' transaksi</h3><div class="total">'+rp(a.reduce((s,t)=>s+t.total,0))+'</div>'}
+function exportCSV(){let rows=[['Tanggal','Payment ID','Nama WR','Pembayaran','Jasa','Jumlah','Tarif','Biaya','Total'],...tx.map(t=>[t.date,t.id,t.wr,t.pay,t.service,t.qty,t.rate,t.fee,t.total])];let csv=rows.map(r=>r.map(x=>'\"'+String(x).replaceAll('\"','\"\"')+'\"').join(',')).join('\\n');download(csv,'transaksi-struk58.csv','text/csv')}
+function backup(){download(JSON.stringify({tx,st},null,2),'backup-struk58.json','application/json')}
+function download(s,n,type){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type}));a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function restore(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);tx=x.tx||[];st=x.st||st;persist();localStorage.setItem(ST,JSON.stringify(st));loadSettings();renderHistory();toast('Backup berhasil dipulihkan')}catch(_){toast('Backup tidak valid')}};r.readAsText(f)}
+function loadSettings(){h1.value=st.h1;h2.value=st.h2;h3.value=st.h3;h4.value=st.h4;sub.value=st.sub;render()}
+function saveSettings(){st={h1:h1.value,h2:h2.value,h3:h3.value,h4:h4.value,sub:sub.value};localStorage.setItem(ST,JSON.stringify(st));render();toast('Header tersimpan')}
+function toast(s){toastEl.textContent=s;toastEl.style.display='block';setTimeout(()=>toastEl.style.display='none',1800)}
+const toastEl=document.getElementById('toast');
+async function installPWA(){if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}else toast('Gunakan menu browser: Tambahkan ke Layar Utama')}
+document.addEventListener('input',e=>{if(['wr','date','pid','pay','service','qty','rate','fee'].includes(e.target.id))render()});
+date.value=nowLocal();pid.value=makeId();loadSettings();
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
+</script>
+</body></html>

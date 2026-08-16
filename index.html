@@ -78,7 +78,7 @@ label{display:block;font-size:12px;font-weight:700}input,select{width:100%;paddi
 <script>
 const TX='st58_tx_v2', ST='st58_settings_v2';
 let tx=JSON.parse(localStorage.getItem(TX)||'[]');
-let st=JSON.parse(localStorage.getItem(ST)||'null')||{h1:'PROVINSI JAWA TIMUR',h2:'DINAS KELAUTAN DAN PERIKANAN',h3:'UPT PELABUHAN PERIKANAN',h4:'PANTAI MUNCAR',sub:'TANDA BUKTI PENERIMAAN (PERDA No. 8 Tahun 2023)'};
+let st=JSON.parse(localStorage.getItem(ST)||'null')||{h1:'PROVINSI JAWA TIMUR',h2:'DINAS PERIKANAN',h3:'UPT PELABUHAN PERIKANAN',h4:'PANTAI MUNCAR',sub:'TANDA BUKTI PENERIMAAN (PERDA No. 8 Tahun 2023)'};
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e});
 const rp=n=>'Rp '+Number(n||0).toLocaleString('id-ID');
@@ -96,7 +96,19 @@ receipt.innerHTML='<div class="c b">'+esc(st.h1)+'</div><div class="c b">'+esc(s
 function persist(){localStorage.setItem(TX,JSON.stringify(tx))}
 function newTx(){wr.value='ROMI';date.value=nowLocal();pid.value=makeId();localStorage.setItem('st58_current_pid',pid.value);pay.value='Cash';service.value='Jasa Listrik Muncar';qty.value=54;rate.value=2000;fee.value=15000;render()}
 function saveTx(){if(!pid.value)newTx();tx.unshift({id:pid.value,wr:wr.value,date:date.value,pay:pay.value,service:service.value,qty:+qty.value||0,rate:+rate.value||0,fee:+fee.value||0,total:calc()});persist();localStorage.removeItem('st58_current_pid');toast('Transaksi tersimpan');tab('history')}
-function printReceipt(){render();window.print()}
+function printReceipt(){
+  render();
+  const html=`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Struk ${esc(pid.value)}</title><style>@page{size:58mm auto;margin:0}html,body{margin:0;padding:0;background:#fff}body{width:58mm;font-family:"Courier New",monospace;color:#000}.receipt{width:58mm;box-sizing:border-box;padding:3mm;font-size:12px;line-height:1.25}.c{text-align:center}.b{font-weight:800}.dash{border-top:1px dashed #000;margin:7px 0}.line{display:flex;justify-content:space-between;gap:7px}.line span:last-child{text-align:right}@media print{body{margin:0}.no-print{display:none!important}}</style></head><body><div class="receipt">${receipt.innerHTML}</div><script>window.addEventListener('load',()=>{setTimeout(()=>window.print(),150)});<\/script></body></html>`;
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const w=window.open(url,'_blank');
+  if(!w){
+    URL.revokeObjectURL(url);
+    toast('Pop-up diblokir. Izinkan pop-up untuk mencetak.');
+    return;
+  }
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+}
 function tab(id){document.querySelectorAll('section').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');if(id==='history')renderHistory();if(id==='report')renderReport()}
 function renderHistory(){let q=(search.value||'').toLowerCase();hist.innerHTML=tx.filter(t=>(t.wr+' '+t.id+' '+t.date+' '+t.service).toLowerCase().includes(q)).map(t=>'<tr><td>'+fmt(t.date)+'</td><td>'+esc(t.id)+'</td><td>'+esc(t.wr)+'</td><td class="r">'+rp(t.total)+'</td><td><button onclick="reprint(\\''+t.id+'\\')">🖨️</button></td></tr>').join('')||'<tr><td colspan="5">Belum ada transaksi.</td></tr>'}
 function reprint(id){let t=tx.find(x=>x.id===id);if(!t)return;wr.value=t.wr;date.value=t.date;pid.value=t.id;pay.value=t.pay;service.value=t.service;qty.value=t.qty;rate.value=t.rate;fee.value=t.fee;localStorage.setItem('st58_current_pid',pid.value);tab('new');render()}
